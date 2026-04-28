@@ -1,6 +1,8 @@
-from typing import Iterable, overload
+from typing import Iterable, overload, Literal
 from math import sqrt
 
+type Number = int | float
+type CartesianComponent = Literal['x', 'y', 'z']
 
 class Vec3:
     x: float
@@ -101,13 +103,11 @@ class Vec3:
             raise ValueError("Cannot normalize zero vector")
         return self / l
 
-
 def sum_vec3(vectors: Iterable[Vec3]) -> Vec3:
     result = Vec3(0.0, 0.0, 0.0)
     for v in vectors:
         result += v
     return result
-
 
 HAT_I = Vec3(1.0, 0.0, 0.0)
 HAT_J = Vec3(0.0, 1.0, 0.0)
