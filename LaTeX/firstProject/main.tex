@@ -1,0 +1,143 @@
+\documentclass[
+    % -- opções da classe memoir --
+    12pt,				% tamanho da fonte
+    %openright,			% capítulos começam em pág ímpar (insere página vazia caso preciso)
+    %twoside,            %twoside para impressão em recto e verso. Oposto a oneside
+    a4paper,			% tamanho do papel.
+    % -- opções da classe abntex2 --
+    %chapter=TITLE,		% títulos de capítulos convertidos em letras maiúsculas
+    %section=TITLE,		% títulos de seções convertidos em letras maiúsculas
+    %subsection=TITLE,	% títulos de subseções convertidos em letras maiúsculas
+    %subsubsection=TITLE,% títulos de subsubseções convertidos em letras maiúsculas
+    % -- opções do pacote babel --
+    english,			% idioma adicional para hifenização
+    brazil,				% o último idioma é o principal do documento
+]{article}
+
+
+% ------------------------------------
+% PACOTES
+% -----------------------------------
+% Pacotes fundamentais
+\usepackage{geometry}
+\let\showhyphens\relax
+\usepackage{lmodern}			% Usa a fonte Latin Modern
+\usepackage[brazil]{babel}		% Suporte ao PTBR
+\usepackage[T1]{fontenc}		% Selecao de codigos de fonte.
+\usepackage[utf8]{inputenc}		% Codificacao do documento (conversão automática dos acentos)
+\usepackage{indentfirst}		% Indenta o primeiro parágrafo de cada seção.
+\usepackage{color}				% Controle das cores
+\usepackage{graphicx}			% Inclusão de gráficos
+\usepackage{microtype} 			% para melhorias de justificação
+\usepackage{setspace}
+\usepackage{caption}
+% Pacotes de citações
+\usepackage{hyperref}
+\usepackage[
+    brazilian,
+    hyperpageref
+]{backref}                      % Paginas com as citações na bibl
+\usepackage[
+    alf,
+    abnt-repeated-title-omit=yes,
+    abnt-etal-list=0
+]{abntex2cite}	                 % Citações padrão ABNT
+% Pacotes adicionais, usados no anexo do modelo de folha de identificação
+\usepackage{multicol}
+\usepackage{multirow}
+% Pacotes adicionais, usados apenas no âmbito do Modelo Canônico do abnteX2
+\usepackage{lipsum}             % para geração de dummy text
+\usepackage{csquotes}
+% Capa personalizada
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+\usepackage{svg}
+% Matematica
+\usepackage{siunitx}            %Pacote para unidades fisicas
+\usepackage[version=4]{mhchem}  %Pacote para formulas químicas
+\usepackage{amsmath,amsthm}     %Pacotes para Matematica
+\usepackage{dsfont}             %
+\usepackage{mathtools}          %
+\usepackage{blindtext}          %
+\usepackage{cancel}             %Cancelar Termos na Matematica
+\usepackage{float}              %
+\usepackage{multicol}
+\usepackage{algorithm2e}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+
+% ------------------------------------
+% CONFIGURAÇÕES DE PACOTES
+% ------------------------------------
+
+%margins
+\geometry{
+    a4paper,
+    left=30mm,
+    right=20mm,
+    top=30mm,
+    bottom=20mm
+}
+\captionsetup{font=footnotesize, justification=centering}
+
+% Programação
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  stringstyle=\color{green!60!black},
+  commentstyle=\color{gray},
+  showstringspaces=false
+}
+
+% informações do PDF
+\makeatletter
+\makeatother
+
+% Seleciona o idioma do documento (conforme pacotes do babel)
+%\selectlanguage{english}
+\selectlanguage{brazil}
+
+%% Controle da contagem de equações e figuras, numeração informa qual sessão eles se encontram
+\counterwithin{figure}{section}
+\counterwithin{equation}{section}
+\counterwithin{table}{section}
+
+%% Controle de operações matemáticas
+\sisetup{
+    output-decimal-marker = {,},    % Para usar vírgula em vez de ponto nos números decimais
+    separate-uncertainty = true,    % Usa a notacao \pm xx para a incerteza, ao invez de (xx)
+    round-mode = uncertainty,       % Arredonda com base na incerteza da medida
+    round-precision = 2             % A incerteza tera no maximo dois digitos
+}
+
+%% Caixa para questões
+\newtcolorbox{questao}{
+  colback=gray!10,
+  colframe=black,
+  title=Questão
+}
+
+% ----------------------------------------------------------
+% Inicio do Documento
+% ----------------------------------------------------------
+
+\begin{document}
+
+% Espaçamentos entre linhas e parágrafos
+\setlength{\parindent}{1.3cm}
+\setlength{\parskip}{0.2cm}
+\setlength{\baselineskip}{15pt} % 1.5
+
+
+\input{Texts/Capa}
+\input{Texts/sumario}
+\input{Texts/introducao}
+\input{Texts/questoes}
+\input{Texts/simulacao}
+\clearpage
+\input{Texts/Bibliografia}
+
+\end{document}

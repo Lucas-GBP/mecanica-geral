@@ -1,0 +1,38 @@
+\section{Introdução}
+\label{sec:introducao}
+
+Dentro da mecânica é muito estudado a trajetória de partículas ao longo do tempo e principalmente a influência de forças nessas partículas seguindo as leis de newton \ref{eq:newton}. É muito útil descrever de maneira algébrica, ou analítica, a posição em função do tempo $\vec r(t)$, pois fica definido a posição em qualquer instante de tempo, e é trivial determinar a velocidade e aceleração utilizando derivadas.
+\begin{equation}
+    \label{eq:newton}
+    \vec F = \frac{d(m\vec v)}{dt}
+\end{equation}
+Um dos casos mais simples, quando a força é constante, é descrita na fórmula \ref{eq:sorvetao} e ela define a posição da partícula independente se $t = 1$ ou se $t = 10^{\text{googol}}$.
+\begin{equation}
+    \label{eq:sorvetao}
+    x(t) = x_0 + v_0t + \frac{at^2}{2}
+\end{equation}
+Contudo, nem todo caso é simples de encontrar a solução analítica. As forças podem depender de $n$ parâmetros, desde o tempo até a própria aceleração da partícula. Isso faz necessária técnicas mais avançadas com métodos de resolução de EDOs, onde situação que parecem simples a primeira vista, se tornam monstruosas \ref{eq:forca-dificil} \ref{eq:resposta-forca-dificil}:
+\begin{equation}
+    \label{eq:forca-dificil}
+    F(v) = -ae^{-bv}
+\end{equation}
+\begin{equation}
+    \label{eq:resposta-forca-dificil}
+\begin{aligned}
+x_f - x_0 = \frac{-m}{ab^2} \Bigg\{
+& e^{b v_0} \Bigg[
+    \ln\left(e^{b v_0} - (t_f - t_0)\frac{ab}{m}\right)
+    - \ln\left(e^{b v_0}\right)
+\Bigg] \\
+& - (t_f - t_0)\frac{ab}{m} \Bigg[
+    \ln\left(e^{b v_0} - (t_f - t_0)\frac{ab}{m}\right)
+    - 1
+\Bigg]
+\Bigg\}
+\end{aligned}
+\end{equation}
+
+Mesmo assim, há situações onde mesmo com todo arcabouço matemático, encontrar uma solução algébrica é impossível. Na verdade, boa parte dos problemas atuais faz parte desse conjunto. Nessas situações, é necessário sacrificar a resolução em todos os instantes, e procurar uma solução numérica ao problema.
+
+É essa situação que será tratada nesse trabalho, uma solução numérica, utilizando uma simulação computacional para resolver um problema que seria muito trabalhoso, ou até impossível, de resolver algebricamente. O problema em questão é o lançamento de um projétil, onde a força de arrasto é dependente da posição, velocidade e do projétil, e a força gravitacional é constante.
+

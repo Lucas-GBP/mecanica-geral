@@ -1,0 +1,211 @@
+\section{Simulação do Movimento de uma Partícula}
+\label{sec:simulacao}
+
+Esta seção descreve a arquitetura computacional utilizada para simular o movimento da partícula sob ação da gravidade e do arrasto atmosférico. A ideia central do projeto é que \textbf{o estado completo do sistema em qualquer instante é determinado pelo triplo} $(m,\,\vec{r},\,\vec{v})$, e todas as forças são funções puras desse estado - sem memória e sem dependência explícita do tempo. Essa escolha de design torna o código modular: novas forças podem ser adicionadas à simulação sem modificar o laço de integração.
+
+Durante essa sessão será exposto partes do código, mas ele esta aberto ao publico no repositório hospedado no github \cite{mecanica-geral-repo-2026}.
+
+\subsection{Estado do Sistema e a Partícula}
+
+O estado do sistema é representado pela partícula $P$, definida pelos seus atributos:
+\begin{equation}
+    P = (m,\,\vec{r},\,\vec{v}), \qquad
+    \vec{r} = \begin{bmatrix}x\\y\\z\end{bmatrix}, \qquad
+    \vec{v} = \begin{bmatrix}v_x\\v_y\\v_z\end{bmatrix}
+\end{equation}
+
+onde $m \in \mathbb{R}^+$ é a massa, $\vec{r} \in \mathbb{R}^3$ a posição e $\vec{v} \in \mathbb{R}^3$ a velocidade. A força total sobre a partícula é a soma de contribuições individuais, cada uma dependendo apenas de $P$:
+\begin{equation}
+    \vec{F}_\text{total}(P) = \sum_n \vec{F}_n(P)
+\end{equation}
+
+Cada $\vec{F}_n$ é uma função do tipo \texttt{ForceFunc}: recebe o estado atual $P$ e retorna um vetor em $\mathbb{R}^3$. A construção das forças como funções de $P$ garante que elas não dependem de variáveis globais mutáveis nem do instante $t$ explicitamente.
+
+A classe \texttt{Particle} encapsula o estado e dois métodos de atualização usados na integração. O método \texttt{update\_velocity} calcula a resultante $\vec{F}_\text{total}$, obtém $\vec{a} = \vec{F}_\text{total}/m$ e aplica o passo de Euler à velocidade. O método \texttt{update\_position} aplica o passo de Euler à posição usando a velocidade \emph{já atualizada} - esse detalhe caracteriza o Euler simplético e será retomado na Sec.~\ref{subsec:integracao}.
+
+\begin{lstlisting}[caption={Estado do sistema: tipo ForceFunc e classe Particle}, label={lst:particle}]
+type ForceFunc = Callable[["Particle"], Vec3]
+
+class Particle:
+    mass: float
+    position: Vec3
+    velocity: Vec3
+    def __init__(self,
+        mass: float,
+        position: Vec3,
+        velocity: Vec3
+    ) -> None:
+        self.mass = mass
+        self.position = position
+        self.velocity = velocity
+
+    def update_velocity(self,
+        forces: list[ForceFunc],
+        dt: float
+    ) -> None:
+        forces_values = [f(self) for f in forces]
+        total_force = sum_vec3(forces_values)
+        acceleration = total_force / self.mass
+        self.velocity += acceleration * dt
+
+    def update_position(self, dt: float) -> None:
+        self.position += self.velocity * dt
+\end{lstlisting}
+
+\subsection{Forças}
+
+Cada força é implementada como uma \emph{factory}: uma função que recebe os parâmetros físicos e retorna uma \texttt{ForceFunc}. Esse padrão - conhecido como \emph{closure} - permite que os parâmetros sejam fixados uma única vez na construção da força e capturados automaticamente em cada chamada dentro do laço de integração, sem a necessidade de passá-los explicitamente a cada passo.
+
+\subsubsection{Força Gravitacional}
+
+A força gravitacional atua exclusivamente na direção $-\hat{k}$ e tem magnitude proporcional à massa da partícula:
+\begin{equation}
+    \vec{F}_g(P) = -m\,a_g\,\hat{k}
+\end{equation}
+
+Apesar de simples, a força acessa $P.m$ a cada chamada, ilustrando que mesmo a gravidade depende do estado instantâneo - em particular da massa da partícula.
+
+\begin{lstlisting}[caption={Força gravitacional como closure}, label={lst:grav}]
+GRAVITATIONAL_ACCELERATION = 9.81   # [m/s^2]
+
+def gravitational_force(
+    a: float = GRAVITATIONAL_ACCELERATION
+) -> ForceFunc:
+    def f(p: Particle) -> Vec3:
+        magnitude = -p.mass * a   # acessa p.mass do estado atual
+        return Vec3(0, 0, magnitude)
+    return f
+\end{lstlisting}
+
+\subsubsection{Força de Arrasto}
+
+O arrasto possui coeficientes que decaem exponencialmente com a altitude e são assimétricos entre a subida e a descida. Os coeficientes de referência (subida) são:
+\begin{equation}
+    \beta_\uparrow(z) = \beta_0\,e^{-z/H}, \qquad
+    \gamma_\uparrow(z) = \gamma_0\,e^{-z/H}
+\end{equation}
+
+e os coeficientes de descida são múltiplos desses:
+\begin{equation}
+    \beta_\downarrow(z) = r_\beta\,\beta_\uparrow(z), \qquad
+    \gamma_\downarrow(z) = r_\gamma\,\gamma_\uparrow(z)
+\end{equation}
+
+A força resultante é \textbf{sempre oposta} ao vetor velocidade $\vec{v}$ nas três dimensões, com magnitude controlada pelos dois regimes:
+\begin{equation}
+    \vec{F}_d(P) = \begin{cases}
+        -\bigl(\beta_\uparrow(z) + \gamma_\uparrow(z)\,\|\vec{v}\|\bigr)\,\vec{v}, & v_z > 0 \quad\text{(subida)}\\[6pt]
+        -\bigl(\beta_\downarrow(z) + \gamma_\downarrow(z)\,\|\vec{v}\|\bigr)\,\vec{v}, & v_z \leq 0 \quad\text{(descida)}
+    \end{cases}
+\end{equation}
+
+A condição $v_z > 0$ ou $v_z \leq 0$ define os \textbf{dois regimes dinâmicos da partícula}: subida e descida. Essa seleção é feita a cada passo de integração com base no estado instantâneo da partícula - não existe variável de fase explícita; a transição entre regimes é automática e determinada unicamente pelo sinal de $v_z$. Os parâmetros $r_\beta$ e $r_\gamma$ controlam a assimetria: quando $r_\beta > 1$, o arrasto linear na descida é mais intenso do que na subida, prolongando o tempo de queda em relação ao de ascensão.
+
+A magnitude da força possui dois termos: o termo linear $\beta\,\|\vec{v}\|$ e o quadrático $\gamma\,\|\vec{v}\|^2$. Ambos dissipam energia e atuam na direção de $-\vec{v}$, sendo portanto válidos para as três componentes vetoriais simultaneamente.
+
+\begin{lstlisting}[caption={Força de arrasto como closure - seleção de regime pelo estado $v_z$}, label={lst:ars}]
+BETA_O  = 1.25  # [kg/s] Intensidade de arrasto linear
+GAMMA_O = 0.1   # [kg/m] Intensidade de arrasto quadratico
+R_BETA  = 5.0   # [adimensional] Fator de assimetria, arrasto linear
+R_GAMMA = 2.5   # [adimensional] Fator de assimetria, arrasto quadratico
+H = 2.0         # [m] Altura de escala
+
+def drag_force(
+    beta_o:  float = BETA_O,
+    gamma_o: float = GAMMA_O,
+    r_beta:  float = R_BETA,
+    r_gamma: float = R_GAMMA,
+    h:       float = H
+) -> ForceFunc:
+    def f(p: Particle) -> Vec3:
+        speed    = p.velocity.length()            # ||v|| -- norma 3D
+        beta_up  = beta_o  * exp(-p.position.z / h)
+        gamma_up = gamma_o * exp(-p.position.z / h)
+
+        if p.velocity.z > 0:   # subida
+            beta  = beta_up
+            gamma = gamma_up
+        else:                   # descida ou apogeu
+            beta  = r_beta  * beta_up
+            gamma = r_gamma * gamma_up
+
+        # sempre oposto a v, valido para as tres componentes
+        return p.velocity * (-beta - gamma * speed)
+    return f
+\end{lstlisting}
+
+\subsection{Integração Numérica}
+\label{subsec:integracao}
+
+A integração adota o método de Euler \emph{simplético}: a velocidade é atualizada \textbf{antes} da posição. Isso implica que $\vec{r}_{n+1}$ é calculado com a velocidade já corrigida $\vec{v}_{n+1}$, e não com $\vec{v}_n$ como no Euler explícito padrão. O livro \cite{kulp-pagonis-cm-2020} foi utilizado como primeira consulta de como implementar esse método de integração.
+
+O estado $(t,\,\vec{r},\,\vec{v})$ é registrado \textbf{antes} de cada integração, garantindo que posição e velocidade armazenadas correspondam ao mesmo instante $t_n$ - consistência necessária para o cálculo correto das métricas. O laço termina quando $z < 0$, indicando que a partícula cruzou o solo.
+
+\begin{lstlisting}[caption={Laço de integração - Euler simplético com salvamento de estado}, label={lst:sim}]
+def simulate_until_ground(
+    position: Vec3 | None = None,
+    velocity: Vec3 | None = None,
+    mass:     float = 1.0,
+    a_g:      float = GRAVITATIONAL_ACCELERATION,
+    beta_o:   float = BETA_O,
+    gamma_o:  float = GAMMA_O,
+    r_beta:   float = R_BETA,
+    r_gamma:  float = R_GAMMA,
+    h:        float = H,
+    with_drag: bool = True
+) -> SimulationResults:
+
+    particle = Particle(mass=mass,
+                        position=position or Vec3(0,0,0),
+                        velocity=velocity or Vec3(0,0,30))
+
+    forces = [gravitational_force(a=a_g)]
+    if with_drag:
+        forces.append(drag_force(beta_o, gamma_o, r_beta, r_gamma, h))
+
+    t, i = 0.0, 0
+    while particle.position.z >= 0 and i < MAX_STEPS:
+        save_state(i, t)                          # salva estado ANTES de integrar
+        particle.update_velocity(forces, TIME_STEP)  # atualiza v primeiro
+        particle.update_position(TIME_STEP)          # usa v ja atualizado
+        t += TIME_STEP
+        i += 1
+
+    return SimulationResults(
+        times=times[:i],
+        positions=positions[:i],
+        velocities=velocities[:i],
+        metrics=extract_metrics(times[:i], positions[:i], velocities[:i])
+    )
+\end{lstlisting}
+
+\subsection{Extração de Métricas}
+
+A partir dos arrays registrados, são extraídas quatro grandezas características da trajetória:
+
+\begin{itemize}
+    \item \textbf{Altura máxima} $z^* = \max_n z_n$: obtida pelo índice do máximo do array de posições verticais.
+    \item \textbf{Tempo de subida} $\tau_\uparrow = t[\arg\max z]$: instante em que a partícula atinge $z^*$, marcando a transição entre os dois regimes dinâmicos.
+    \item \textbf{Tempo de descida} $\tau_\downarrow = t_\text{final} - \tau_\uparrow$: diferença entre o último instante registrado (imediatamente antes de $z$ cruzar zero) e o instante do apogeu.
+    \item \textbf{Velocidade de impacto} $\vec{v}^* = \vec{v}[N-1]$: último estado de velocidade salvo, que corresponde ao instante de maior proximidade ao solo antes da condição de parada ser ativada.
+\end{itemize}
+
+\begin{lstlisting}[caption={Extração de métricas a partir dos arrays simulados}, label={lst:metrics}]
+def extract_metrics(times, positions, velocities) -> SimulationMetrics:
+    z     = positions[:, 2]
+    z_max = float(np.max(z))
+    i_top = int(np.argmax(z))
+
+    tau_up   = float(times[i_top])
+    tau_down = float(times[-1]) - tau_up
+
+    v_last  = velocities[-1]
+    v_final = Vec3(float(v_last[0]),
+                   float(v_last[1]),
+                   float(v_last[2]))
+
+    return SimulationMetrics(
+        z_max=z_max,   tau_up=tau_up,
+        tau_down=tau_down, v_final=v_final
+    )
+\end{lstlisting}
