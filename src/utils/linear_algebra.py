@@ -17,6 +17,9 @@ class Vec3:
     def __repr__(self) -> str:
         return f"Vec3({self.x}, {self.y}, {self.z})"
 
+    def copy(self) -> Vec3:
+        return Vec3(self.x, self.y, self.z)
+
     def __add__(self, other: Vec3 | float) -> Vec3:
         if isinstance(other, Vec3):
             return Vec3(self.x + other.x, self.y + other.y, self.z + other.z)

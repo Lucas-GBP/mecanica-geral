@@ -1,7 +1,7 @@
 \section{Questões}
 \label{sec:questoes}
 
-Esse capítulo é composto por respostas diretas às perguntas na descrição do trabalho. A explicação mais detalhada do funcionamento e as decisões de arquitetura da simulação são expostas na sessão \ref{sec:simulacao}.
+Esse capítulo é composto por respostas diretas às perguntas da descrição do trabalho. A explicação mais detalhada do funcionamento e as decisões de arquitetura da simulação são expostas na sessão \ref{sec:simulacao}.
 
 \subsection{Discretização das Equações de Movimento}
 
@@ -31,7 +31,7 @@ Aplicando o método de Euler explícito, cada derivada é aproximada por uma dif
 Da Eq.~\ref{eq:quest-1.7}, obtém-se diretamente a atualização da posição:
 \begin{equation}
     \label{eq:euler-x}
-    x_{n+1} = x_n + v_n\,\Delta t
+    x_{n+1} = x_n + v_{n+1}\,\Delta t
 \end{equation}
 
 Da Eq.~\ref{eq:quest-1.6}, isolando $v_{n+1}$:
@@ -107,7 +107,7 @@ Em todos os cenários, o perfil espacial permanece exponencial: o coeficiente é
 
 \begin{figure}[!htb]
     \centering
-    \includegraphics[width=0.75\linewidth]{Imagens/questao3_variacao_r_beta.pdf}
+    \includegraphics[width=0.70\linewidth]{Imagens/questao3_variacao_r_beta.pdf}
     \caption{Variação do $\beta_\downarrow$ pela altura}
     \label{fig:beta-down-variation}
 \end{figure}
