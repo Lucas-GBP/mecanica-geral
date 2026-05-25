@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Callable, Literal
-from utils.linear_algebra import Vec3, sum_vec3
+from .linear_algebra import Vec3, sum_vec3
 
 type ForceFunc = Callable[["Particle", float|None], Vec3] # Defnição de um tipo para funções de força, que recebem uma partícula e retornam um vetor de força
 type UpdateFunc = Callable[[list[ForceFunc], float, float|None], None] # Definição de um tipo para funções de atualização, que recebem uma lista de funções de força, o tempo atual e um intervalo de tempo, e não retornam nada
