@@ -1,0 +1,310 @@
+\section{Questões}
+\label{sec:questoes}
+
+Este capítulo contém as respostas diretas às questões da descrição do trabalho. A arquitetura completa da simulação, incluindo a estrutura das forças, o integrador e a extração de métricas é descrita na seção Simulação \ref{sec:simulacao}.
+
+% ============================================================
+\subsection{Discretização das Equações de Movimento}
+% ============================================================
+
+\begin{questao}
+Discretize as equações de movimento utilizando o método de Euler com passo temporal $\Delta t$.
+Apresente explicitamente as expressões para $x_{n+1}$ e $v_{n+1}$.
+\end{questao}
+
+O sistema de primeira ordem equivalente à equação de movimento é (Eqs.~\ref{eq:2.eom-x} e \ref{eq:2.eom-v}):
+\begin{equation}
+    \label{eq:2.eom-x}
+    \frac{dx}{dt} = v
+\end{equation}
+\begin{equation}
+    \label{eq:2.eom-v}
+    \frac{dv}{dt} = -\frac{k}{m}x - \frac{\alpha}{m}x^3 - \frac{b}{m}v + \frac{F_0}{m}\cos(\omega t)
+\end{equation}
+
+Aplicando a diferença finita de primeira ordem $\displaystyle\frac{df}{dt}\bigg|_{t_n} \approx \frac{f_{n+1} - f_n}{\Delta t}$ a ambas as equações e adotando o \textbf{método de Euler}, com a velocidade atualizada \emph{antes} da posição, obtém-se:
+\begin{equation}
+    \label{eq:2.euler-v}
+    \boxed{v_{n+1} = v_n + \left[-\frac{k}{m}x_n - \frac{\alpha}{m}x_n^3 - \frac{b}{m}v_n + \frac{F_0}{m}\cos(\omega t_n)\right]\Delta t}
+\end{equation}
+\begin{equation}
+    \label{eq:2.euler-x}
+    \boxed{x_{n+1} = x_n + v_{n+1}\,\Delta t}
+\end{equation}
+
+Na implementação, as forças foram generalizadas para $\mathbb{R}^3$, com a força restauradora assumindo a forma $\vec{F}_r = -(k + \alpha|\vec{r}|^2)\,\vec{r}$, que recupera exatamente a Eq.~\ref{eq:2.eom-v} ao longo do eixo $x$ quando $y = z = 0$. Os detalhes da implementação vetorial são discutidos na Sec.~\ref{sec:simulacao}.
+
+% ============================================================
+\subsection{Análise do Potencial Efetivo}
+% ============================================================
+
+\begin{questao}
+Faça uma análise gráfica do potencial efetivo $U(x)$ para diferentes valores de $\alpha$. Discuta como a não linearidade modifica a forma do potencial.
+\end{questao}
+
+A parte conservativa do sistema é descrita pelo potencial:
+\begin{equation}
+    \label{eq:2.potencial}
+    U(x) = \frac{1}{2}kx^2 + \frac{1}{4}\alpha x^4
+\end{equation}
+
+A Fig.~\ref{fig:potencial} apresenta $U(x)$ para $k = 1{,}0\,\text{N/m}$ e diferentes valores de $\alpha$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.95\linewidth]{questao2_potencial.pdf}
+    \caption{Potencial efetivo $U(x)$ para diferentes valores de $\alpha$, com $k = 1{,}0\,\text{N/m}$. Linhas tracejadas indicam $\alpha < 0$, linhas sólidas $\alpha > 0$ e linha pontilhada $\alpha = 0$.}
+    \label{fig:potencial}
+\end{figure}
+
+\textbf{Caso $\alpha = 0$ (oscilador harmônico).} O potencial é uma parábola simétrica $U(x) = \frac{1}{2}kx^2$. A força restauradora cresce linearmente com $x$ e a frequência de oscilação $\omega_0 = \sqrt{k/m}$ é independente da amplitude.
+
+\textbf{Caso $\alpha > 0$ (mola endurecedora).} O termo $\frac{1}{4}\alpha x^4$ domina para grandes $|x|$, tornando o potencial mais estreito do que a parábola harmônica. A força restauradora cresce mais rapidamente do que no caso linear o sistema oscila com frequência efetiva \emph{maior} do que $\omega_0$, e essa frequência aumenta com a amplitude. Esse comportamento é característico do oscilador de Duffing com \textit{hardening spring}.
+
+\textbf{Caso $\alpha < 0$ (mola amolecedora).} O termo quártico tende a ``aplainar'' o potencial e, para $|x|$ suficientemente grande, pode dominar e tornar o potencial negativo, eliminando o mínimo e fazendo a partícula escapar para o infinito. Para valores intermediários, o potencial exibe uma região central conforme mas com paredes mais rasas do que o caso harmônico. A frequência efetiva \emph{diminui} com a amplitude.
+
+Em todos os casos, o único mínimo de $U(x)$ permanece em $x = 0$ enquanto $k > 0$, independentemente de $\alpha$. A não linearidade altera a \emph{curvatura} do potencial nas proximidades do mínimo apenas em segunda ordem, sendo imperceptível para pequenas amplitudes o comportamento linear é recuperado no limite $|x| \to 0$.
+
+% ============================================================
+\subsection{Implementação e Simulação Base}
+% ============================================================
+
+\begin{questao}
+ Implemente o método numérico escolhido para a integração das equações de movimento em uma
+linguagem de programação de sua escolha e obtenha numericamente as soluções $x(t)$ e $v(t)$, bem como o retrato de fase $v \times x$. Discuta o comportamento físico observado.
+\end{questao}
+
+O algoritmo foi implementado em Python, e as simulações apresentadas foram integradas pelo método de Runge-Kutta de 4ª ordem (RK4), conforme descrito na Sec.~\ref{sec:simulacao}. Os parâmetros nominais utilizados são listados na Tab.~\ref{tab:params-q3}. A frequência natural linear do sistema é $\omega_0 = \sqrt{k/m} = 1{,}0\,\text{rad/s}$; a frequência de excitação $\omega = 0{,}7\,\text{rad/s}$ foi escolhida abaixo da ressonância para que o caso base não corresponda ao regime extremo do sistema.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Parâmetros nominais da simulação}
+    \label{tab:params-q3}
+    \begin{tabular}{llll}
+        \hline
+        Parâmetro & Símbolo & Valor & Unidade \\
+        \hline
+        Massa                           & $m$        & $1{,}0$ & kg       \\
+        Constante elástica linear       & $k$        & $1{,}0$ & N/m      \\
+        Intensidade da não linearidade  & $\alpha$   & $0{,}5$ & N/m$^3$  \\
+        Coeficiente de amortecimento    & $b$        & $0{,}3$ & kg/s     \\
+        Amplitude da força externa      & $F_0$      & $0{,}5$ & N        \\
+        Frequência de excitação         & $\omega$   & $0{,}7$ & rad/s    \\
+        Frequência natural              & $\omega_0$ & $1{,}0$ & rad/s    \\
+        Posição inicial                 & $x_0$      & $1{,}0$ & m        \\
+        Velocidade inicial              & $v_0$      & $0{,}0$ & m/s      \\
+        Energia mecânica inicial        & $E_0$      & $0{,}625$ & J      \\
+        Passo de tempo                  & $\Delta t$ & $0{,}01$  & s      \\
+        Duração da simulação            & $T$        & $80{,}0$  & s      \\
+        \hline
+    \end{tabular}
+\end{table}
+
+O valor de $E_0 = 0{,}625\,\text{J}$ é exato, calculado diretamente das condições iniciais: $E_0 = \frac{1}{2}mv_0^2 + \frac{1}{2}kx_0^2 + \frac{1}{4}\alpha x_0^4 = 0 + 0{,}500 + 0{,}125 = 0{,}625\,\text{J}$.
+
+A Fig.~\ref{fig:sim-base} apresenta os quatro painéis da simulação base: posição $x(t)$, velocidade $v_x(t)$, retrato de fase $v_x \times x$ e energia mecânica $E(t)$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao3_simulacao_base.pdf}
+    \caption{Simulação base do oscilador não linear amortecido e forçado com os parâmetros da Tab.~\ref{tab:params-q3}.}
+    \label{fig:sim-base}
+\end{figure}
+
+\textbf{Posição e velocidade.} O sistema parte de $x_0 = 1{,}0\,\text{m}$ com $v_0 = 0$ e exibe um \emph{transiente} inicial durante aproximadamente $\tau_\text{trans} \approx 2m/b \approx 6{,}7\,\text{s}$, no qual a amplitude decresce a partir das condições iniciais. Após o transiente, o sistema entra em \emph{regime estacionário}: a oscilação se torna periódica com frequência $\omega = 0{,}7\,\text{rad/s}$, mantida pela força externa que repõe continuamente a energia dissipada pelo amortecimento.
+
+\textbf{Retrato de fase.} No transiente, a trajetória espirala em direção a um \emph{atrator} no plano $v_x \times x$: um ciclo-limite fechado, correspondente ao regime estacionário. A forma levemente distorcida desse ciclo-limite, em contraste com uma elipse perfeita do caso harmônico, é uma assinatura direta da não linearidade $\alpha \neq 0$.
+
+\textbf{Energia mecânica.} $E(t)$ decresce durante o transiente e converge para um valor médio estacionário $\bar{E}_\text{est}$ em que a potência injetada pela força externa equilibra em média a potência dissipada pelo amortecimento. Flutuações cíclicas de $E(t)$ persistem no regime estacionário, refletindo o intercâmbio periódico de energia entre o oscilador e o forçamento externo ao longo de cada ciclo.
+
+% ============================================================
+\subsection{Influência do Coeficiente de Amortecimento}
+% ============================================================
+
+\begin{questao}
+Considere inicialmente o caso sem força externa ($F_0 = 0$). Analise como diferentes valores do coeficiente de amortecimento $b$ influenciam: a amplitude das oscilações, o decaimento temporal e o retrato de fase.
+\end{questao}
+
+A Fig.~\ref{fig:variacao-b} mostra os quatro painéis de diagnóstico para $b \in \{0;\;0{,}1;\;0{,}3;\;0{,}5;\;1{,}0;\;2{,}0\}\,\text{kg/s}$, com os demais parâmetros fixos nos valores nominais e $F_0 = 0$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao4_variacao_b.pdf}
+    \caption{Influência do coeficiente de amortecimento $b$ no oscilador sem força externa. Cada curva corresponde a um valor de $b$.}
+    \label{fig:variacao-b}
+\end{figure}
+
+\textbf{Amplitude e decaimento.} Para $b = 0$, o sistema é conservativo: a amplitude permanece constante indefinidamente e a energia mecânica $E = E_0$ é preservada. Para qualquer $b > 0$, a amplitude decai exponencialmente com constante de tempo $\tau \approx 2m/b$. Valores maiores de $b$ produzem decaimento mais rápido: com $b = 2{,}0\,\text{kg/s}$, a oscilação é quase completamente amortecida em poucos períodos, enquanto $b = 0{,}1\,\text{kg/s}$ mantém amplitude apreciável ao longo de toda a simulação.
+
+\textbf{Frequência de oscilação.} A frequência de oscilação livre amortecida é $\omega_d = \sqrt{\omega_\text{eff}^2 - (b/2m)^2}$, onde $\omega_\text{eff}$ é a frequência efetiva do oscilador não linear (ligeiramente maior do que $\omega_0$ para $\alpha > 0$). O amortecimento reduz levemente a frequência observada em relação ao caso não amortecido, mas para os valores de $b$ considerados (razão de amortecimento $\zeta = b/2\sqrt{km} \leq 1$) o sistema permanece sub-amortecido e a frequência de oscilação é pouco alterada.
+
+\textbf{Retrato de fase.} Para $b = 0$, as trajetórias são curvas fechadas (órbitas conservativas) centradas na origem. Para $b > 0$, as trajetórias são espirais convergindo para a origem: quanto maior $b$, mais rapidamente as espirais convergem. A distorção das curvas em relação à forma elíptica é de origem não linear e é mais visível para $b$ pequeno, quando a amplitude é grande por mais tempo.
+
+\textbf{Energia.} $E(t)$ é constante para $b = 0$; para $b > 0$, decai monotonicamente com taxa instantânea $\dot{E} = -bv^2 \leq 0$. A taxa de dissipação é proporcional ao quadrado da velocidade, de modo que ela é maior nos instantes de velocidade máxima (ao cruzar $x = 0$) e nula nos instantes de velocidade nula (nos extremos de oscilação).
+
+% ============================================================
+\subsection{Oscilador Harmônico vs.\ Oscilador Não Linear}
+% ============================================================
+
+\begin{questao}
+Compare os resultados obtidos para $\alpha = 0$ (oscilador harmônico linear) e $\alpha \neq 0$ (oscilador não linear). Discuta quais características do movimento são exclusivamente devidas à não linearidade.
+\end{questao}
+
+A Fig.~\ref{fig:linear-vs-nao-linear} compara as trajetórias para $\alpha = 0$ e $\alpha = 0{,}5\,\text{N/m}^3$, com $b = 0{,}3\,\text{kg/s}$ e $F_0 = 0$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao5_linear_vs_nao_linear.pdf}
+    \caption{Comparação entre oscilador harmônico ($\alpha = 0$) e não linear ($\alpha = 0{,}5$), sem força externa.}
+    \label{fig:linear-vs-nao-linear}
+\end{figure}
+
+\textbf{Posição e velocidade.} A principal diferença observada em $x(t)$ é a frequência de oscilação: o oscilador não linear ($\alpha > 0$) oscila mais rapidamente do que o harmônico, pois o termo $\alpha x^3$ aumenta a força restauradora efetiva para amplitudes finitas. Essa diferença de frequência é \emph{dependente da amplitude}: ela é mais pronunciada no início da simulação (quando a amplitude ainda é grande) e diminui ao longo do transiente à medida que a amplitude decai. O oscilador harmônico, por construção, mantém frequência constante $\omega_0$ independentemente da amplitude.
+
+\textbf{Forma da oscilação.} As curvas $x(t)$ do oscilador harmônico têm forma perfeitamente senoidal; as do oscilador não linear apresentam leve distorção, com picos ligeiramente mais ``pontiagudos'' nos extremos (onde a força restauradora mais intensa reduz o tempo de permanência perto dos pontos de retorno).
+
+\textbf{Retrato de fase.} Para o oscilador harmônico, as órbitas são elipses perfeitas que diminuem concentricamente em direção à origem. Para o oscilador não linear, as órbitas são levemente achatadas ao longo do eixo $x$ nas regiões de grande $|x|$, onde o potencial é mais ``rígido'' do que a parábola harmônica. A assimetria é mais visível nas primeiras órbitas, de maior amplitude.
+
+\textbf{Energia.} Ambos os sistemas dissipam energia com taxa $-bv^2$, de modo que a taxa de decaimento energético é determinada exclusivamente por $b$ e pela amplitude da velocidade. Como o oscilador não linear tem velocidade máxima ligeiramente diferente do harmônico (para a mesma posição inicial), há uma diferença quantitativa no perfil de $E(t)$, mas o comportamento qualitativo de decaimento exponencial é idêntico.
+
+Em síntese, a não linearidade produz exclusivamente: (i) dependência da frequência de oscilação com a amplitude; (ii) distorção harmônica do sinal $x(t)$ (desvio da forma senoidal pura); (iii) deformação das órbitas no retrato de fase. O decaimento de amplitude e a taxa de dissipação de energia são determinados pelo amortecimento $b$ e são qualitativamente os mesmos nos dois regimes.
+
+% ============================================================
+\subsection{Análise Energética sem Força Externa}
+% ============================================================
+
+\begin{questao}
+Para o caso sem força externa ($F_0 = 0$), analise numericamente a evolução temporal da energia para diferentes valores de $b$. Discuta: a taxa de dissipação de energia; o papel da não linearidade na dinâmica energética; a relação entre energia e trajetória no espaço de fase.
+\end{questao}
+
+\textbf{Parte 1 - Taxa de dissipação para diferentes $b$.}
+A Fig.~\ref{fig:energia-b} mostra $E(t)$ para $b \in \{0;\;0{,}1;\;0{,}3;\;0{,}5;\;1{,}0\}\,\text{kg/s}$, com $F_0 = 0$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao6_energia_variacao_b.pdf}
+    \caption{Evolução da energia mecânica $E(t)$ para diferentes coeficientes de amortecimento $b$, sem força externa.}
+    \label{fig:energia-b}
+\end{figure}
+
+A taxa de variação da energia é exatamente a potência dissipada:
+\begin{equation}
+    \label{eq:2.taxa-energia}
+    \dot{E}(t) = P_\text{diss}(t) = -b\,v^2(t) \leq 0
+\end{equation}
+
+Para $b = 0$, $E(t) = E_0 = \text{const.}$ (sistema conservativo). Para $b > 0$, $E(t)$ decresce monotonicamente, com envelope aproximadamente exponencial $E(t) \approx E_0 e^{-bt/m}$: duplicar $b$ reduz à metade o tempo de decaimento. As oscilações visíveis em $E(t)$ para $b$ pequeno refletem a variação cíclica da potência dissipada $-bv^2$, que é máxima quando $|v|$ é máxima (no centro da oscilação) e nula quando $v = 0$ (nos extremos).
+
+\textbf{Parte 2 - Papel da não linearidade.}
+A Fig.~\ref{fig:energia-alpha} compara $E(t)$ e o espaço de fase para $\alpha = 0$ e $\alpha = 0{,}5\,\text{N/m}^3$, com $b = 0{,}3\,\text{kg/s}$ e $F_0 = 0$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao6_energia_nao_linearidade.pdf}
+    \caption{Influência da não linearidade $\alpha$ na energia mecânica e no retrato de fase, com $b = 0{,}3\,\text{kg/s}$ e $F_0 = 0$.}
+    \label{fig:energia-alpha}
+\end{figure}
+
+A taxa de dissipação depende somente de $b$ e de $v(t)$; a não linearidade não dissipa energia por si mesma. Contudo, $\alpha$ altera a distribuição de $v(t)$ ao longo da trajetória o oscilador não linear permanece por menos tempo nas vizinhanças dos extremos de oscilação (onde $v \approx 0$). O que pode produzir uma taxa de dissipação instantânea levemente diferente do caso harmônico para a mesma amplitude. O efeito, porém, é secundário: o comportamento dominante de $E(t)$ é determinado por $b$.
+
+No retrato de fase, a conexão entre energia e trajetória é direta: cada curva de nível de $E$ corresponde a uma órbita conservativa, e o amortecimento faz a trajetória cruzar essas curvas de nível progressivamente em direção à origem. Para o oscilador harmônico, as curvas de nível são elipses e as órbitas decaem concentricamente. Para o oscilador não linear, as curvas de nível são levemente distorcidas e as órbitas refletem essa deformação ao decair.
+
+% ============================================================
+\subsection{Resposta ao Forçamento Externo e Ressonância}
+% ============================================================
+
+\begin{questao}
+Considere agora o caso com força externa periódica ($F_0 \neq 0$). Analise a resposta do sistema para diferentes valores de $\omega$, discutindo: o comportamento transiente; o regime estacionário; a ocorrência de ressonância.
+\end{questao}
+
+\textbf{Curva de ressonância.}
+A Fig.~\ref{fig:ressonancia} mostra a amplitude estacionária $x_\text{est}$ em função de $\omega$, obtida varrendo $\omega \in [0{,}2;\;2{,}5]\,\text{rad/s}$ com os demais parâmetros nominais. A amplitude estacionária é definida como o valor máximo de $|x(t)|$ no último quarto da simulação, após a extinção do transiente.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.9\linewidth]{questao7_curva_ressonancia.pdf}
+    \caption{Curva de ressonância do oscilador não linear: amplitude estacionária em função da frequência de excitação $\omega$. A linha pontilhada indica a frequência natural linear $\omega_0 = 1{,}0\,\text{rad/s}$.}
+    \label{fig:ressonancia}
+\end{figure}
+
+A curva apresenta um pico de amplitude centrado próximo de $\omega_0 = 1{,}0\,\text{rad/s}$, que é a frequência natural linear do sistema. O amortecimento $b = 0{,}3\,\text{kg/s}$ (razão de amortecimento $\zeta = b/2\sqrt{km} = 0{,}15$) limita a amplitude máxima e alarga a curva. Nota-se que o pico está levemente deslocado para $\omega > \omega_0$: esse é o efeito de \emph{rigidificação} da mola não linear ($\alpha > 0$), que aumenta a frequência efetiva de ressonância em relação ao valor linear.
+
+\textbf{Transiente e regime estacionário.}
+A Fig.~\ref{fig:transiente} compara as trajetórias para três valores de $\omega$: abaixo, na e acima da ressonância.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao7_transiente_estacionario.pdf}
+    \caption{Transiente e regime estacionário para $\omega = 0{,}5$, $\omega = \omega_0 = 1{,}0$ e $\omega = 1{,}5\,\text{rad/s}$.}
+    \label{fig:transiente}
+\end{figure}
+
+Em todos os casos, o transiente decai com escala de tempo $\tau \approx 2m/b \approx 6{,}7\,\text{s}$, após o qual o sistema oscila em regime estacionário com frequência exatamente igual a $\omega$ (e não $\omega_0$). A amplitude estacionária é máxima próximo à ressonância e decresce para frequências bem afastadas de $\omega_0$. O retrato de fase mostra um ciclo-limite: fechado e periódico no regime estacionário, com formato dependente de $\omega$ e da não linearidade.
+
+% ============================================================
+\subsection{Comparação: Oscilador Linear vs.\ Não Linear Forçado}
+% ============================================================
+
+\begin{questao}
+Compare os resultados obtidos para o sistema forçado com $\alpha = 0$ e $\alpha \neq 0$. Analise como a não linearidade modifica: a amplitude das oscilações; o comportamento temporal; o retrato de fase; a resposta na região de ressonância.
+\end{questao}
+
+\textbf{Curvas de ressonância comparadas.}
+A Fig.~\ref{fig:ressonancia-comparada} superpõe as curvas de ressonância para $\alpha = 0$ e $\alpha = 0{,}5\,\text{N/m}^3$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=0.9\linewidth]{questao8_ressonancia_comparada.pdf}
+    \caption{Curvas de ressonância comparadas para o oscilador harmônico ($\alpha = 0$) e não linear ($\alpha = 0{,}5$), com $b = 0{,}3\,\text{kg/s}$ e $F_0 = 0{,}5\,\text{N}$.}
+    \label{fig:ressonancia-comparada}
+\end{figure}
+
+Para o oscilador harmônico, o pico está exatamente em $\omega = \omega_0 = 1{,}0\,\text{rad/s}$. Para o oscilador não linear ($\alpha > 0$), o pico é deslocado para uma frequência ligeiramente maior: a frequência efetiva de ressonância $\omega_\text{res} > \omega_0$ resulta da rigidificação da mola, cujo efeito é mais pronunciado para amplitudes maiores. Além disso, a amplitude máxima no pico é menor no caso não linear: a mola mais rígida limita o crescimento da amplitude, prevenindo o acúmulo irrestrito de energia que ocorreria no caso linear sem amortecimento.
+
+\textbf{Detalhe na ressonância.}
+A Fig.~\ref{fig:ressonancia-detalhe} mostra os quatro painéis de diagnóstico para $\omega = \omega_0 = 1{,}0\,\text{rad/s}$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao8_detalhe_ressonancia.pdf}
+    \caption{Comparação detalhada em $\omega = \omega_0 = 1{,}0\,\text{rad/s}$: oscilador harmônico vs.\ não linear.}
+    \label{fig:ressonancia-detalhe}
+\end{figure}
+
+Na frequência $\omega = \omega_0$, o oscilador harmônico atinge uma amplitude estacionária maior do que o não linear: o forçamento está perfeitamente sintonizado com a frequência natural linear, enquanto o oscilador de Duffing tem sua frequência efetiva deslocada para um valor maior. O ciclo-limite do oscilador harmônico é uma elipse, ao passo que o do oscilador de Duffing apresenta deformação visível ao longo do eixo $x$. A energia média estacionária é igualmente maior no caso harmônico, refletindo a amplitude maior.
+
+% ============================================================
+\subsection{Balanço Energético com Força Externa}
+% ============================================================
+
+\begin{questao}
+Para o caso com força externa periódica ($F_0 \neq 0$), analise a evolução temporal da energia mecânica. Discuta: o balanço entre energia injetada e energia dissipada; a existência de um regime estacionário dinâmico; a dependência desse regime com a frequência $\omega$; a relação entre energia e ressonância.
+\end{questao}
+
+As potências relevantes do sistema são:
+\begin{align}
+    P_\text{ext}(t)  &= F_0\cos(\omega t)\,v(t) \label{eq:2.pext} \\
+    P_\text{diss}(t) &= -b\,v^2(t) \leq 0 \label{eq:2.pdiss} \\
+    \dot{E}(t)       &= P_\text{ext}(t) + P_\text{diss}(t) \label{eq:2.pdot}
+\end{align}
+
+A Fig.~\ref{fig:energia-balanco} apresenta $E(t)$ e o balanço de potência para três regimes de $\omega$.
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{questao9_balanco_energetico.pdf}
+    \caption{Evolução da energia mecânica (esquerda) e balanço de potências $P_\text{ext}$, $P_\text{diss}$ e $P_\text{net} = \dot{E}$ (direita) para três frequências de excitação. Linha sólida azul: $P_\text{ext}$; laranja: $P_\text{diss}$; tracejada verde: $P_\text{net}$.}
+    \label{fig:energia-balanco}
+\end{figure}
+
+\textbf{Regime estacionário.} Após a extinção do transiente, $E(t)$ oscila em torno de um valor médio constante $\bar{E}_\text{est}$: é o \emph{regime estacionário dinâmico}. Nesse regime, a potência média injetada pela força externa equilibra exatamente a potência média dissipada pelo amortecimento:
+\begin{equation}
+    \langle P_\text{ext} \rangle = -\langle P_\text{diss} \rangle = b\,\langle v^2 \rangle
+\end{equation}
+Isso é visível na figura: $P_\text{net}(t) = \dot{E}(t)$ oscila em torno de zero no regime estacionário, indicando que não há transferência líquida de energia no sentido médio.
+
+\textbf{Dependência com $\omega$.} A energia média estacionária $\bar{E}_\text{est}$ depende fortemente de $\omega$. Na ressonância ($\omega \approx \omega_0$), a eficiência de transferência de energia da força externa para o oscilador é máxima: $P_\text{ext}(t)$ é em média positiva (a força está aproximadamente em fase com a velocidade), e o sistema mantém uma amplitude, e portanto uma energia cinética média, muito maior. Para $\omega$ bem abaixo ou acima da ressonância, a força e a velocidade tendem a ficar fora de fase, reduzindo a transferência de energia e a amplitude estacionária.
+
+\textbf{Transiente.} Durante o transiente, $E(t)$ pode subir ou descer dependendo da relação entre as condições iniciais e a amplitude estacionária: se a condição inicial possui energia maior do que $\bar{E}_\text{est}$, o sistema dissipa o excesso; se menor, a força externa ``carrega'' o oscilador até o regime estacionário. A taxa de ajuste é controlada por $b$.
+
+\textbf{Ressonância e potência.} O comportamento de $P_\text{ext}(t)$ na ressonância é de especial interesse: as oscilações de $P_\text{ext}(t)$ têm amplitude máxima e são majoritariamente positivas ao longo de cada ciclo, refletindo o alinhamento de fase entre força e velocidade. Para frequências longe da ressonância, $P_\text{ext}(t)$ alterna rapidamente entre valores positivos e negativos, e sua média é próxima de zero.

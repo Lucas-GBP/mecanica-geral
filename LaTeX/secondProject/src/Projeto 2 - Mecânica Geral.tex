@@ -1,0 +1,117 @@
+\documentclass[
+    12pt,
+    a4paper,
+    english,
+    brazilian,
+]{article}
+
+% ------------------------------------
+% PACOTES
+% ------------------------------------
+\usepackage{geometry}
+\let\showhyphens\relax
+\usepackage{lmodern}
+\usepackage[brazilian]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{indentfirst}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage{caption}
+% Citações
+\usepackage{hyperref}
+\usepackage[
+    brazilian,
+    hyperpageref
+]{backref}
+\usepackage[
+    alf,
+    abnt-repeated-title-omit=yes,
+    abnt-etal-list=0
+]{abntex2cite}
+% Tabelas
+\usepackage{multicol}
+\usepackage{multirow}
+% Texto dummy
+\usepackage{lipsum}
+\usepackage{csquotes}
+% Matemática
+\usepackage{siunitx}
+\usepackage[version=4]{mhchem}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{dsfont}
+\usepackage{mathtools}
+\usepackage{cancel}
+\usepackage{float}
+\usepackage{algorithm2e}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+% ------------------------------------
+% CONFIGURAÇÕES
+% ------------------------------------
+
+\geometry{
+    a4paper,
+    left=30mm,
+    right=20mm,
+    top=30mm,
+    bottom=20mm
+}
+\captionsetup{font=footnotesize, justification=centering}
+
+\graphicspath{{Images/}{../../src/outputs/figures/}}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  stringstyle=\color{green!60!black},
+  commentstyle=\color{gray},
+  showstringspaces=false
+}
+
+\makeatletter
+\makeatother
+
+\selectlanguage{brazilian}
+
+\counterwithin{figure}{section}
+\counterwithin{equation}{section}
+\counterwithin{table}{section}
+
+\sisetup{
+    output-decimal-marker = {,},
+    separate-uncertainty = true,
+    round-mode = uncertainty,
+    round-precision = 2
+}
+
+\newtcolorbox{questao}{
+  colback=gray!10,
+  colframe=black,
+  title=Questão
+}
+
+% ----------------------------------------------------------
+% Inicio do Documento
+% ----------------------------------------------------------
+
+\begin{document}
+
+\setlength{\parindent}{1.3cm}
+\setlength{\parskip}{0.2cm}
+\setlength{\baselineskip}{15pt}
+
+\input{Texts/capa}
+\input{Texts/sumario}
+\input{Texts/introducao}
+\input{Texts/questoes}
+\input{Texts/simulacao}
+\clearpage
+\input{Texts/bibliografia}
+
+\end{document}

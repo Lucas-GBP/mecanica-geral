@@ -1,0 +1,193 @@
+\section{Simulação do Oscilador Não Linear}
+\label{sec:simulacao}
+
+Esta seção descreve a arquitetura computacional utilizada para simular o oscilador amortecido e forçado. O projeto é hospedado publicamente no repositório \cite{mecanica-geral-repo-2026}. As simulações apresentadas nas questões foram realizadas com o método de Runge-Kutta de 4ª ordem (RK4); o método de Euler aparece apenas na discretização solicitada na primeira questão e na comparação metodológica ao final desta seção. A ideia central é similar à do projeto anterior: \textbf{o estado completo do sistema em qualquer instante é determinado pelo par $(m, \vec{r}, \vec{v})$}, e todas as forças são funções puras desse estado mais, quando necessário, do instante $t$. Essa escolha torna a adição de novas forças trivial, basta acrescentá-las à lista passada ao integrador.
+
+% ------------------------------------------------------------
+\subsection{Estado do Sistema e a Partícula}
+% ------------------------------------------------------------
+
+O estado do oscilador é representado pela partícula $P$:
+\begin{equation}
+    P = (m,\,\vec{r},\,\vec{v}), \qquad
+    \vec{r} = \begin{bmatrix}x\\y\\z\end{bmatrix}, \qquad
+    \vec{v} = \begin{bmatrix}v_x\\v_y\\v_z\end{bmatrix}
+\end{equation}
+
+Embora o problema proposto seja essencialmente unidimensional (ao longo do eixo $x$), as forças são implementadas em $\mathbb{R}^3$ por meio da classe \texttt{Vec3}, a mesma utilizada no projeto anterior. Isso torna o código reutilizável para configurações tridimensionais sem modificação. Na simulação do oscilador, a posição inicial é $\vec{r}_0 = (x_0, 0, 0)$ e a velocidade $\vec{v}_0 = (v_0, 0, 0)$, de modo que o movimento permanece estritamente no eixo $x$.
+
+A força total sobre a partícula é a soma de contribuições independentes:
+\begin{equation}
+    \vec{F}_\text{total}(P, t) = \sum_n \vec{F}_n(P, t)
+\end{equation}
+
+Cada $\vec{F}_n$ é uma \texttt{ForceFunc}: uma função que recebe o estado atual $P$ e o instante $t$ e retorna um vetor em $\mathbb{R}^3$. As forças dependentes de $t$ (caso da força externa periódica) recebem o tempo explicitamente; as forças independentes de $t$ (restauradora e amortecimento) ignoram esse argumento.
+
+% ------------------------------------------------------------
+\subsection{Forças}
+% ------------------------------------------------------------
+
+As forças são implementadas como \emph{factories} (funções que retornam funções), seguindo o padrão de \textit{closure} do projeto anterior: os parâmetros físicos são capturados na construção da força e não precisam ser passados a cada chamada.
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{Força Restauradora Não Linear}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+A força restauradora generalizada para $\mathbb{R}^3$ é:
+\begin{equation}
+    \vec{F}_r(P) = -\bigl(k + \alpha\,|\vec{r}|^2\bigr)\,\vec{r}
+\end{equation}
+
+Ao longo do eixo $x$ (com $y = z = 0$), essa expressão reduz-se à força de Duffing unidimensional:
+\begin{equation}
+    F_{r,x} = -(k + \alpha x^2)\,x = -kx - \alpha x^3
+\end{equation}
+que é exatamente o termo conservativo da equação de movimento proposta.
+
+\begin{lstlisting}[caption={Força restauradora não linear como closure}, label={lst:2.restoring}]
+K = 1.0         # [N/m]   Constante elastica linear
+ALPHA = 0.5     # [N/m^3] Intensidade da nao linearidade
+
+def restoring_force(k: float = K, alpha: float = ALPHA) -> ForceFunc:
+    def f(particle: Particle, _: float | None = None) -> Vec3:
+        r = particle.position.length()
+        return particle.position * -(k + alpha * (r ** 2))
+    return f
+\end{lstlisting}
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{Força de Amortecimento}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+O amortecimento viscoso é proporcional à velocidade instantânea e sempre oposto a ela:
+\begin{equation}
+    \vec{F}_d(P) = -b\,\vec{v}
+\end{equation}
+
+\begin{lstlisting}[caption={Força de amortecimento como closure}, label={lst:2.damping}]
+B = 0.3         # [kg/s] Coeficiente de amortecimento
+
+def damping_force(b: float = B) -> ForceFunc:
+    def f(particle: Particle, _: float | None = None) -> Vec3:
+        return particle.velocity * (-b)
+    return f
+\end{lstlisting}
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{Força Externa Periódica}
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+A força externa é um vetor oscilatório de amplitude $\vec{F}_0$ e frequência $\omega$:
+\begin{equation}
+    \vec{F}_\text{ext}(t) = \vec{F}_0\,\cos(\omega t + \phi)
+\end{equation}
+
+Na simulação do oscilador unidimensional, $\vec{F}_0 = (F_0, 0, 0)$, recuperando a expressão escalar $F_0\cos(\omega t)$. O argumento de fase $\phi$ permite ajustar a fase inicial da excitação (por padrão $\phi = 0$). Como essa força depende explicitamente de $t$, ela recebe o instante de tempo como segundo argumento.
+
+\begin{lstlisting}[caption={Força externa periodica como closure}, label={lst:2.external}]
+F0    = 0.5     # [N]      Amplitude da forca externa
+OMEGA = 0.7     # [rad/s]  Frequencia angular (omega_0 = 1.0 rad/s)
+PHI   = 0.0     # [rad]    Fase inicial
+
+def external_periodic_force(
+    f_o: Vec3 | None = None,
+    omega: float = OMEGA,
+    phi:   float = PHI,
+) -> ForceFunc:
+    _f_o = f_o or Vec3(F0, 0.0, 0.0)
+    def f(_: Particle, time: float | None = None) -> Vec3:
+        if time is None:
+            return Vec3(0.0, 0.0, 0.0)
+        return _f_o * cos(omega * time + phi)
+    return f
+\end{lstlisting}
+
+% ------------------------------------------------------------
+\subsection{Extração de Métricas}
+% ------------------------------------------------------------
+
+A partir dos arrays registrados, são extraídas as seguintes grandezas:
+
+\begin{itemize}
+    \item \textbf{Amplitude máxima} $x_\text{max} = \max_n |x_n|$: obtida pelo máximo do valor absoluto do array de posições.
+    \item \textbf{Amplitude estacionária} $x_\text{est} = \max_{n > 0.75N} |x_n|$: valor máximo de $|x|$ no último quarto da simulação, após a extinção do transiente.
+    \item \textbf{Energia inicial} $E_0 = E(t=0)$: primeiro elemento do array de energias.
+    \item \textbf{Energia final} $E_f = E(t=T)$: último elemento do array de energias.
+    \item \textbf{Energia média estacionária} $\bar{E}_\text{est} = \langle E(t) \rangle_{t > 0.75T}$: média do array de energias no último quarto da simulação.
+\end{itemize}
+
+\begin{lstlisting}[caption={Extração de métricas a partir dos arrays simulados}, label={lst:2.metrics}]
+def extract_oscillator_metrics(times, positions, velocities, energies):
+    x            = positions[:, 0]
+    steady_start = int(0.75 * len(times))
+
+    x_max        = float(np.max(np.abs(x)))
+    x_steady     = float(np.max(np.abs(x[steady_start:])))
+    e_initial    = float(energies[0])
+    e_final      = float(energies[-1])
+    e_steady_mean= float(np.mean(energies[steady_start:]))
+
+    return OscillatorMetrics(
+        x_max=x_max, x_steady=x_steady,
+        e_initial=e_initial, e_final=e_final,
+        e_steady_mean=e_steady_mean
+    )
+\end{lstlisting}
+
+
+% ------------------------------------------------------------
+\subsection{Comparação entre Método de Euler e Runge-Kutta de 4ª Ordem}
+\label{subsec:2.euler-vs-rk4}
+% ------------------------------------------------------------
+
+Esta seção não faz parte das questões propostas pelo professor, mas explora uma comparação metodológica relevante: o comportamento numérico do \textbf{método de Euler} em contraste com o \textbf{Runge-Kutta de 4ª ordem (RK4)}, ambos implementados na classe \texttt{Particle}. As simulações principais do trabalho foram realizadas com RK4; a comparação abaixo mostra por que esse integrador foi escolhido para gerar os resultados apresentados nas questões.
+
+\subsubsection{Ordem de Precisão e Conservação de Energia}
+
+O método de Euler é um método de \textbf{1ª ordem}: o erro local por passo é $O(\Delta t^2)$ e o erro global ao longo de uma trajetória de duração $T$ é $O(\Delta t)$. O RK4 é de \textbf{4ª ordem}: erro local $O(\Delta t^5)$ e erro global $O(\Delta t^4)$. Para $\Delta t = 0{,}1\,\text{s}$, a relação teórica entre os erros, desprezando constantes multiplicativas, é da ordem de $10^3$. Portanto, para o mesmo passo temporal, espera-se que o RK4 seja muito mais preciso que o método de Euler.
+
+Essa diferença é especialmente importante no caso conservativo, no qual a energia mecânica deveria permanecer constante. O método de Euler apresenta erro global de primeira ordem e, para passos grandes, pode deslocar a trajetória numérica em relação à solução física. O RK4, por ser de 4ª ordem, conserva a energia com precisão muito superior no intervalo de tempo considerado. Nas simulações com força externa, o instante de tempo é passado explicitamente ao integrador, de modo que a dependência temporal de $\vec{F}_\text{ext}(t)$ é tratada diretamente pelo RK4. Por esse motivo, o RK4 é o integrador utilizado nas simulações apresentadas neste trabalho.
+
+\subsubsection{Cenário de Comparação e Resultados}
+
+O cenário escolhido para ampliar as diferenças é o oscilador não linear \textbf{conservativo} ($b = 0$, $F_0 = 0$), onde a energia mecânica deve ser exatamente constante. Os parâmetros utilizados são: $x_0 = 2{,}0\,\text{m}$, $v_0 = 0$, $\Delta t = 0{,}1\,\text{s}$ (10 vezes maior que o padrão) e $T = 200\,\text{s}$. A energia teórica exata é:
+\begin{equation}
+    E_0 = \frac{1}{2}k x_0^2 + \frac{1}{4}\alpha x_0^4
+        = \frac{1}{2}(1{,}0)(4{,}0) + \frac{1}{4}(0{,}5)(16{,}0)
+        = 2{,}0 + 2{,}0 = 4{,}0\,\text{J}
+\end{equation}
+
+A Tab.~\ref{tab:euler-vs-rk4} resume os erros de energia obtidos numericamente. A Fig.~\ref{fig:euler-vs-rk4} apresenta a comparação visual nos três aspectos: retrato de fase, energia e deriva de fase.
+
+\begin{table}[!htb]
+    \centering
+    \caption{Erros de energia relativa para método de Euler e RK4 ($\Delta t = 0{,}1\,\text{s}$, $T = 200\,\text{s}$)}
+    \label{tab:euler-vs-rk4}
+    \begin{tabular}{lcc}
+        \hline
+        Método                & Erro máx.\ relativo & Erro médio relativo \\
+        \hline
+        método de Euler      & $1{,}03 \times 10^{-1}$ & $5{,}1 \times 10^{-2}$ \\
+        RK4                   & $1{,}60 \times 10^{-3}$ & $8{,}0 \times 10^{-4}$ \\
+        \hline
+        Razão (Euler/RK4)     & $\sim 64\times$ & $\sim 64\times$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{extra_euler_vs_rk4.pdf}
+    \caption{Comparação entre método de Euler e RK4 para o oscilador não linear conservativo ($x_0 = 2{,}0\,\text{m}$, $b = 0$, $F_0 = 0$, $\Delta t = 0{,}1\,\text{s}$, $T = 200\,\text{s}$). Esquerda: retrato de fase completo. Centro: energia mecânica $E(t)$ com referência $E_0 = 4{,}0\,\text{J}$ (pontilhada). Direita: posição $x(t)$ no trecho final, exibindo a deriva de fase acumulada após $\sim$30 períodos.}
+    \label{fig:euler-vs-rk4}
+\end{figure}
+
+\textbf{Retrato de fase.} O método de Euler produz uma órbita com forma visivelmente diferente da órbita obtida com RK4. A diferença de raio no retrato de fase indica que a solução de Euler permanece deslocada em relação à superfície de energia física esperada.
+
+\textbf{Energia.} O erro de energia do método de Euler atinge amplitude de $\sim 10\%$ ao redor de $E_0$ neste cenário. O erro do RK4 é de $\sim 0{,}08\%$, essencialmente imperceptível na escala do gráfico.
+
+\textbf{Deriva de fase.} No trecho final ($t \geq 180\,\text{s}$, após $\sim 30$ períodos), as duas soluções estão claramente defasadas. O método de Euler acumula erro de fase $\sim O(\Delta t \cdot T)$, enquanto o RK4 acumula $\sim O(\Delta t^4 \cdot T)$: para os parâmetros usados, a relação é $(\Delta t^4 / \Delta t) = \Delta t^3 = 10^{-3}$, ou seja, o RK4 acumula três ordens de magnitude menos erro de fase.
+
+\subsubsection{Custo Computacional e Escolha do Integrador}
+
+O RK4 exige \textbf{4 avaliações de força} por passo, contra \textbf{1} do método de Euler. Para atingir precisão equivalente à do RK4 com $\Delta t_\text{RK4} = 0{,}1\,\text{s}$, o método de Euler precisaria de $\Delta t_\text{Euler} \sim \Delta t_\text{RK4}^4 = 10^{-4}\,\text{s}$, ou seja, $10^3$ vezes mais passos e portanto $\sim 250$ vezes mais avaliações de força. Para as integrações realizadas neste trabalho, o RK4 oferece melhor precisão numérica com custo computacional ainda baixo.

@@ -52,6 +52,7 @@ class Particle:
     def update(self, forces: list[ForceFunc], dt: float, time: float|None = None) -> None:
         self._update_impl(forces, dt, time)
         return
+
     def copy(self) -> Particle:
         return Particle(
             mass=self.mass,
@@ -59,6 +60,9 @@ class Particle:
             velocity=self.velocity,
             simulation_type=self.simulation_type,
         )
+
+    def kinetic_energy(self) -> float:
+        return 0.5 * self.mass * (self.velocity.length() ** 2)
 
     def _euler_update(self, forces: list[ForceFunc], dt: float, time: float|None = None) -> None:
         acceleration = sum_vec3(force(self, time) for force in forces) / self.mass
