@@ -1,0 +1,199 @@
+\section{Introdu\c{c}\~ao}
+
+Neste trabalho foi estudado numericamente o espalhamento cl\'assico de uma part\'icula em um potencial central regularizado, conforme proposto no enunciado do projeto \cite{projeto-3-enunciado-2026}. A part\'icula entra pela esquerda com velocidade inicial paralela ao eixo $x$ e par\^ametro de impacto $b$, sofre deflex\~ao pela for\c{c}a central e escapa para a regi\~ao $x>0$ com nova dire\c{c}\~ao de movimento.
+
+O potencial considerado foi
+\begin{equation}
+    V(r)=\frac{k}{\sqrt{r^2+\varepsilon^2}},
+    \qquad
+    r=\sqrt{x^2+y^2}.
+    \label{eq:potencial}
+\end{equation}
+O par\^ametro $k$ define a intensidade e o sinal da intera\c{c}\~ao: $k>0$ corresponde ao caso repulsivo e $k<0$ ao caso atrativo. O par\^ametro $\varepsilon$ evita a singularidade em $r=0$.
+
+Os detalhes da implementa\c{c}\~ao, da escolha de integrador e da redu\c{c}\~ao do problema a uma \'unica part\'icula din\^amica s\~ao apresentados na Sec.~\ref{sec:simulacao}.
+
+\input{Texts/simulacao}
+
+\section{Quest\~oes}
+
+\subsection{Discretiza\c{c}\~ao das equa\c{c}\~oes de movimento}
+
+\begin{questao}
+Escreva as equa\c{c}\~oes de movimento no formato adequado para implementa\c{c}\~ao num\'erica. Utilize o m\'etodo de Euler para discretiza\c{c}\~ao e apresente as express\~oes para $x_{n+1}$, $y_{n+1}$, $v_{x,n+1}$ e $v_{y,n+1}$.
+\end{questao}
+
+Como o potencial depende apenas de $r$, a for\c{c}a \'e
+\begin{equation}
+    \vec F(\vec r)=-\nabla V(r)
+    =
+    \frac{k\vec r}{(r^2+\varepsilon^2)^{3/2}}.
+    \label{eq:forca}
+\end{equation}
+Logo,
+\begin{align}
+    \frac{dx}{dt} &= v_x, &
+    \frac{dy}{dt} &= v_y, \\
+    \frac{dv_x}{dt} &= \frac{kx}{m(x^2+y^2+\varepsilon^2)^{3/2}}, &
+    \frac{dv_y}{dt} &= \frac{ky}{m(x^2+y^2+\varepsilon^2)^{3/2}}.
+\end{align}
+
+No m\'etodo de Euler expl\'icito, avaliando a for\c{c}a no instante $t_n$:
+\begin{align}
+    x_{n+1} &= x_n + v_{x,n}\Delta t, \\
+    y_{n+1} &= y_n + v_{y,n}\Delta t, \\
+    v_{x,n+1} &= v_{x,n}
+    + \frac{kx_n}{m(x_n^2+y_n^2+\varepsilon^2)^{3/2}}\Delta t, \\
+    v_{y,n+1} &= v_{y,n}
+    + \frac{ky_n}{m(x_n^2+y_n^2+\varepsilon^2)^{3/2}}\Delta t.
+\end{align}
+
+\subsection{Implementa\c{c}\~ao num\'erica}
+
+\begin{questao}
+Implemente numericamente o sistema, usando Euler ou RK4, e obtenha trajet\'orias da part\'icula.
+\end{questao}
+
+A implementa\c{c}\~ao usada nos resultados integrou a part\'icula pelo m\'etodo RK4. A condi\c{c}\~ao inicial padr\~ao foi $(x_0,y_0)=(-20,1{,}5)$ e $\vec v_0=(2,0)$. A simula\c{c}\~ao foi encerrada quando a part\'icula retornou a $x\geq x_{\max}$ com $v_x>0$, isto \'e, quando escapou da regi\~ao de intera\c{c}\~ao.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{questao2_simulacao_base.pdf}
+    \caption{Simula\c{c}\~ao base para $b=1{,}5$, $k=2{,}0$ e $\varepsilon=0{,}25$.}
+    \label{fig:base}
+\end{figure}
+
+Para esse caso, obteve-se $\theta = 35{,}4889^\circ$, erro relativo m\'aximo de energia $5{,}77\times 10^{-12}$ e erro relativo m\'aximo de momento angular $5{,}80\times 10^{-14}$. Esses valores indicam que o desvio observado \'e f\'isico, enquanto as varia\c{c}\~oes de energia e momento angular s\~ao apenas erro num\'erico residual.
+
+\subsection{Varia\c{c}\~ao do par\^ametro de impacto}
+
+\begin{questao}
+Analise graficamente as trajet\'orias para diferentes valores do par\^ametro de impacto $b$ e discuta como a trajet\'oria \'e alterada.
+\end{questao}
+
+A Fig.~\ref{fig:b} mostra as trajet\'orias para $b\in\{0{,}7,1{,}0,1{,}5,2{,}2,3{,}3,5{,}0\}$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.92\linewidth]{questao3_trajetorias_b.pdf}
+    \caption{Trajet\'orias para diferentes par\^ametros de impacto, com $k=2{,}0$.}
+    \label{fig:b}
+\end{figure}
+
+Quanto menor \'e $b$, menor \'e a dist\^ancia m\'inima ao centro e maior \'e a deflex\~ao. Para $b=0{,}7$, o \^angulo foi aproximadamente $68{,}05^\circ$; para $b=5{,}0$, caiu para $10{,}82^\circ$. Assim, trajet\'orias rasantes interagem pouco com o centro e se aproximam do movimento retil\'ineo.
+
+\subsection{Conserva\c{c}\~ao de energia e momento angular}
+
+\begin{questao}
+Verifique numericamente a conserva\c{c}\~ao da energia mec\^anica e do momento angular. Discuta poss\'iveis erros num\'ericos.
+\end{questao}
+
+As grandezas monitoradas foram
+\begin{equation}
+    E(t)=\frac{1}{2}m(v_x^2+v_y^2)+\frac{k}{\sqrt{x^2+y^2+\varepsilon^2}},
+    \label{eq:energia}
+\end{equation}
+e
+\begin{equation}
+    L_z(t)=m(xv_y-yv_x).
+    \label{eq:momento}
+\end{equation}
+Como a for\c{c}a \'e central e conservativa, $E$ e $L_z$ devem ser constantes. A Fig.~\ref{fig:conservacao} compara os erros relativos de Euler e RK4.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{questao4_conservacao_euler_rk4.pdf}
+    \caption{Erros relativos de energia e momento angular para Euler e RK4.}
+    \label{fig:conservacao}
+\end{figure}
+
+Com RK4, o erro relativo m\'aximo de energia ficou da ordem de $10^{-12}$; com Euler, chegou a aproximadamente $8{,}34\times 10^{-4}$. O momento angular foi bem preservado nos dois casos, mas a energia evidencia a maior precis\~ao do RK4. Os erros s\~ao consequ\^encia da discretiza\c{c}\~ao temporal, n\~ao de viola\c{c}\~ao f\'isica da conserva\c{c}\~ao.
+
+\subsection{\texorpdfstring{\^Angulo de espalhamento $\theta(b)$}{Angulo de espalhamento}}
+
+\begin{questao}
+Estude como o \^angulo de espalhamento depende do par\^ametro de impacto $b$. Construa o gr\'afico $\theta(b)$ e interprete os resultados fisicamente.
+\end{questao}
+
+O \^angulo de espalhamento foi calculado pela dire\c{c}\~ao final da velocidade:
+\begin{equation}
+    \theta=\operatorname{atan2}(v_{y,f},v_{x,f}).
+\end{equation}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth]{questao5_theta_b.pdf}
+    \caption{Depend\^encia do \^angulo de espalhamento com o par\^ametro de impacto.}
+    \label{fig:theta-b}
+\end{figure}
+
+O gr\'afico mostra uma queda monot\^onica de $\theta$ com $b$. Isso ocorre porque, em impactos mais distantes, a part\'icula atravessa uma regi\~ao onde o gradiente do potencial \'e menor; portanto, a for\c{c}a transversal acumulada durante a passagem tamb\'em diminui.
+
+\subsection{Intera\c{c}\~ao fraca e forte}
+
+\begin{questao}
+Compare os casos de intera\c{c}\~ao fraca e forte e discuta como a intensidade do potencial afeta o espalhamento.
+\end{questao}
+
+Foram comparados os casos $k=0{,}7$ e $k=3{,}0$. Para o mesmo par\^ametro de impacto, o caso de maior $|k|$ produz maior for\c{c}a radial e, portanto, maior desvio.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth]{questao6_theta_interacao_fraca_forte.pdf}
+    \caption{Curvas $\theta(b)$ para intera\c{c}\~ao fraca e forte.}
+    \label{fig:fraca-forte-theta}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth]{questao6_trajetorias_interacao_fraca_forte.pdf}
+    \caption{Trajet\'orias para intera\c{c}\~ao fraca e forte com $b=1{,}5$.}
+    \label{fig:fraca-forte-traj}
+\end{figure}
+
+Para $b=1{,}5$, o caso fraco gerou $\theta\simeq 12{,}88^\circ$, enquanto o caso forte gerou $\theta\simeq 50{,}93^\circ$. O aumento de $k$ tamb\'em desloca a dist\^ancia m\'inima no caso repulsivo, pois a part\'icula come\c{c}a a ser afastada do centro antes de chegar muito perto da origem.
+
+\subsection{For\c{c}as atrativas e repulsivas}
+
+\begin{questao}
+Investigue a diferen\c{c}a entre for\c{c}as atrativas ($k<0$) e repulsivas ($k>0$). Compare qualitativamente as trajet\'orias obtidas.
+\end{questao}
+
+Para isolar o efeito do sinal, foi usado $|k|=2{,}0$. No caso repulsivo, a part\'icula \'e empurrada para longe do centro. No caso atrativo, ela \'e puxada na dire\c{c}\~ao da origem.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth]{questao7_theta_atrativa_repulsiva.pdf}
+    \caption{Curvas $\theta(b)$ para intera\c{c}\~ao repulsiva e atrativa.}
+    \label{fig:atrativa-repulsiva-theta}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth]{questao7_trajetorias_atrativa_repulsiva.pdf}
+    \caption{Trajet\'orias atrativa e repulsiva para $b=1{,}5$.}
+    \label{fig:atrativa-repulsiva-traj}
+\end{figure}
+
+Com $b=1{,}5$, o caso repulsivo produziu $\theta\simeq 35{,}49^\circ$, enquanto o caso atrativo produziu $\theta\simeq -35{,}71^\circ$. O sinal oposto do \^angulo reflete a mudan\c{c}a da dire\c{c}\~ao da for\c{c}a transversal. O caso atrativo tamb\'em apresentou menor dist\^ancia m\'inima ao centro, pois a for\c{c}a puxa a part\'icula para a regi\~ao de maior intensidade do potencial.
+
+\subsection{Efeito da regulariza\c{c}\~ao}
+
+\begin{questao}
+Explore o efeito do par\^ametro de regulariza\c{c}\~ao $\varepsilon$ sobre a estabilidade num\'erica e o comportamento pr\'oximo da origem.
+\end{questao}
+
+A regulariza\c{c}\~ao suaviza o potencial perto de $r=0$. A Fig.~\ref{fig:epsilon} compara diferentes valores de $\varepsilon$ para $b=0{,}8$.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\linewidth]{questao8_variacao_epsilon.pdf}
+    \caption{Efeito da regulariza\c{c}\~ao $\varepsilon$ sobre trajet\'orias pr\'oximas da origem.}
+    \label{fig:epsilon}
+\end{figure}
+
+Valores pequenos de $\varepsilon$ aproximam o potencial de $1/r$ e tornam a for\c{c}a mais abrupta em passagens pr\'oximas. Valores maiores suavizam o centro e reduzem a deflex\~ao: para $b=0{,}8$, o \^angulo caiu de aproximadamente $62{,}67^\circ$ em $\varepsilon=0{,}05$ para $42{,}20^\circ$ em $\varepsilon=1{,}00$. Assim, $\varepsilon$ melhora a estabilidade num\'erica e controla a intensidade efetiva da intera\c{c}\~ao perto da origem.
+
+\section{Conclus\~ao}
+
+Os resultados reproduzem o comportamento esperado de espalhamento cl\'assico em potencial central. O par\^ametro de impacto controla a proximidade da passagem e, consequentemente, o \^angulo de espalhamento. O m\'odulo de $k$ controla a intensidade da deflex\~ao, enquanto o sinal de $k$ determina se a trajet\'oria \'e desviada para longe ou para perto da origem. A conserva\c{c}\~ao de energia e momento angular foi verificada numericamente, com erros pequenos para RK4, justificando seu uso nos gr\'aficos finais.

@@ -1,0 +1,34 @@
+\section{Introdução}
+\label{sec:introducao}
+
+Osciladores são sistemas que retornam à posição de equilíbrio após sofrerem uma perturbação. O caso mais estudado é o oscilador harmônico simples, governado pela equação de Newton \ref{eq:2.newton}:
+\begin{equation}
+    \label{eq:2.newton}
+    m\ddot{x} = -kx
+\end{equation}
+cuja solução analítica é exata e conhecida:
+\begin{equation}
+    x(t) = A\cos(\omega_0 t + \phi), \qquad \omega_0 = \sqrt{\frac{k}{m}}
+\end{equation}
+
+A frequência natural $\omega_0$ é independente da amplitude $A$, propriedade característica do regime linear. Essa propriedade permite prever com precisão o comportamento do sistema para qualquer condição inicial, tornando o oscilador harmônico um modelo analiticamente tratável.
+
+Na prática, porém, sistemas físicos reais raramente são puramente lineares. A força elástica de uma mola real deixa de ser proporcional ao deslocamento para amplitudes grandes; pêndulos simples apresentam termos de maior ordem em $\theta$; estruturas mecânicas e circuitos elétricos exibem comportamentos que não podem ser capturados pelo modelo linear. Uma classe importante de osciladores não lineares é descrita pela \emph{equação de Duffing}, que inclui um termo cúbico na força restauradora:
+\begin{equation}
+    \label{eq:duffing}
+    m\ddot{x} = -kx - \alpha x^3
+\end{equation}
+
+O parâmetro $\alpha$ controla a intensidade da não linearidade. Para $\alpha > 0$, a mola é \emph{endurecedora} (\textit{hardening spring}): a força restauradora cresce mais rapidamente do que no caso linear, de modo que a frequência efetiva de oscilação aumenta com a amplitude. Para $\alpha < 0$, a mola é \emph{amolecedora} (\textit{softening spring}): a frequência efetiva decresce com a amplitude, e o potencial pode apresentar pontos de sela ou mínimos duplos.
+
+Quando o sistema também está sujeito a amortecimento viscoso $-b\dot{x}$ e a uma força externa periódica $F_0\cos(\omega t)$, obtém-se o oscilador de Duffing completo:
+\begin{equation}
+    \label{eq:duffing-completo}
+    m\ddot{x} = -kx - \alpha x^3 - b\dot{x} + F_0\cos(\omega t)
+\end{equation}
+
+Esse sistema é muito importante na dinâmica não linear: dependendo dos parâmetros, exibe comportamentos que vão desde oscilações periódicas simples até ressonância não linear, bifurcações e, em regimes extremos, caos determinístico. A diferença central em relação ao oscilador linear forçado é que a frequência de ressonância depende da amplitude e o pico de ressonância desloca-se com a intensidade da excitação, tornando a curva de resposta assimétrica.
+
+A solução analítica em forma fechada da Eq.~\ref{eq:duffing-completo} não existe em geral; perturbações analíticas como o método de Lindstedt-Poincaré ou a média temporal são válidas apenas para amplitudes pequenas ou em regimes específicos. Para uma exploração dos parâmetros, incluindo a transição entre regimes sub-ressonante, ressonante e super-ressonante, e o efeito combinado do amortecimento e da não linearidade, a abordagem numérica é indispensável.
+
+É essa exploração que constitui o objeto deste trabalho: implementar numericamente o oscilador de Duffing amortecido e forçado, investigar o papel de cada parâmetro no comportamento dinâmico e analisar o balanço energético do sistema. A implementação é realizada em Python, e as simulações apresentadas ao longo do trabalho foram integradas pelo método de Runge-Kutta de 4ª ordem (RK4). A discretização pelo método de Euler é apresentada separadamente na Sec.~\ref{sec:questoes}, conforme solicitado na primeira questão.

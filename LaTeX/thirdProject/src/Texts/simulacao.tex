@@ -1,0 +1,113 @@
+\section{Simula\c{c}\~ao do Espalhamento}
+\label{sec:simulacao}
+
+Esta se\c{c}\~ao descreve a estrutura computacional usada para gerar as trajet\'orias e as grandezas analisadas nas quest\~oes. O c\'odigo foi escrito em Python, no mesmo reposit\'orio dos projetos anteriores \cite{mecanica-geral-repo-2026}, reaproveitando a classe \texttt{Particle} e o tipo vetorial \texttt{Vec3}. As simula\c{c}\~oes principais foram integradas com Runge--Kutta de quarta ordem (RK4); o m\'etodo de Euler foi mantido na discretiza\c{c}\~ao pedida no enunciado e na compara\c{c}\~ao de conserva\c{c}\~ao de energia. A formula\c{c}\~ao do problema como um sistema de primeira ordem e a escolha de m\'etodos num\'ericos seguem a abordagem de mec\^anica computacional apresentada por Kulp e Pagonis \cite{kulp-pagonis-cm-2020}.
+
+\subsection{Estado Din\^amico}
+
+O estado integrado numericamente foi o de uma \'unica part\'icula din\^amica,
+\begin{equation}
+    P = (m,\vec r,\vec v),
+    \qquad
+    \vec r = (x,y,0),
+    \qquad
+    \vec v = (v_x,v_y,0).
+\end{equation}
+Embora o movimento do espalhamento esteja contido no plano $xy$, a representa\c{c}\~ao em \(\mathbb{R}^3\) foi mantida para ficar compat\'ivel com a infraestrutura j\'a usada nos trabalhos anteriores. A coordenada $z$ permanece nula em todas as simula\c{c}\~oes.
+
+A for\c{c}a total recebida pela part\'icula \'e a soma das fun\c{c}\~oes de for\c{c}a passadas ao integrador,
+\begin{equation}
+    \vec F_{\text{total}}(P,t) = \sum_i \vec F_i(P,t).
+\end{equation}
+Neste projeto houve apenas uma contribui\c{c}\~ao: a for\c{c}a central associada ao potencial regularizado.
+
+\subsection{Redu\c{c}\~ao a uma Part\'icula}
+
+Uma leitura natural do problema \'e imaginar duas part\'iculas interagindo: a part\'icula incidente e o centro espalhador. Se as duas fossem corpos livres, seria necess\'ario atualizar os dois estados simultaneamente e aplicar a terceira lei de Newton,
+\begin{equation}
+    \vec F_{12} = -\vec F_{21}.
+\end{equation}
+Esse \'e exatamente o tipo de situa\c{c}\~ao para a qual a classe \texttt{ParticleSystem} foi criada: calcular uma for\c{c}a de par uma \'unica vez e aplicar contribui\c{c}\~oes opostas nas duas part\'iculas.
+
+No enunciado deste projeto, por\'em, o centro de for\c{c}a permanece fixo na origem. Ele n\~ao possui uma posi\c{c}\~ao din\^amica a ser integrada, nem uma velocidade que precise ser atualizada. Assim, o centro atua como um campo externo fixo, e a vari\'avel relevante \'e apenas a posi\c{c}\~ao relativa da part\'icula em rela\c{c}\~ao a ele.
+
+Essa redu\c{c}\~ao tamb\'em pode ser vista pela formula\c{c}\~ao de dois corpos. Para massas $m$ e $M$, as coordenadas de centro de massa e relativa s\~ao
+\begin{equation}
+    \vec R = \frac{m\vec r_1 + M\vec r_2}{m+M},
+    \qquad
+    \vec r = \vec r_1-\vec r_2.
+\end{equation}
+Quando a intera\c{c}\~ao depende apenas de $\vec r$, a din\^amica relativa obedece
+\begin{equation}
+    \mu \ddot{\vec r} = \vec F(\vec r),
+    \qquad
+    \mu = \frac{mM}{m+M}.
+\end{equation}
+Se o centro espalhador \'e mantido fixo, ou se $M\gg m$, ent\~ao a coordenada relativa coincide com a posi\c{c}\~ao da part\'icula incidente no referencial do centro e $\mu\simeq m$. Portanto, simular apenas \texttt{Particle} n\~ao descarta a intera\c{c}\~ao: apenas usa a descri\c{c}\~ao reduzida adequada ao referencial em que o centro est\'a fixo.
+
+Por esse motivo, o \texttt{ParticleSystem} n\~ao foi usado nas respostas finais. Ele seria necess\'ario em um problema diferente, por exemplo, se o centro espalhador pudesse recuar, se as massas fossem compar\'aveis, ou se v\'arias part\'iculas interagissem entre si durante a mesma simula\c{c}\~ao.
+
+\subsection{For\c{c}a Central}
+
+O potencial usado foi
+\begin{equation}
+    V(r)=\frac{k}{\sqrt{r^2+\varepsilon^2}},
+    \qquad
+    r=\sqrt{x^2+y^2}.
+\end{equation}
+Logo, a for\c{c}a aplicada na part\'icula \'e
+\begin{equation}
+    \vec F(\vec r)=-\nabla V(r)
+    =
+    \frac{k\vec r}{(r^2+\varepsilon^2)^{3/2}}.
+\end{equation}
+O sinal de $k$ determina o car\'ater da intera\c{c}\~ao: para $k>0$, a for\c{c}a aponta para fora da origem e o espalhamento \'e repulsivo; para $k<0$, a for\c{c}a aponta para a origem e o espalhamento \'e atrativo.
+
+\subsection{Integra\c{c}\~ao e Condi\c{c}\~ao de Parada}
+
+Cada trajet\'oria come\c{c}a em
+\begin{equation}
+    \vec r_0=(-x_{\max}, b, 0),
+    \qquad
+    \vec v_0=(v_0,0,0),
+\end{equation}
+onde $b$ \'e o par\^ametro de impacto. A part\'icula entra pela esquerda, interage com o centro e a integra\c{c}\~ao termina quando ela retorna a $x\geq x_{\max}$ com $v_x>0$. Essa condi\c{c}\~ao garante que a part\'icula j\'a atravessou a regi\~ao de intera\c{c}\~ao e saiu para a direita.
+
+\begin{table}[H]
+    \centering
+    \caption{Par\^ametros nominais usados nas simula\c{c}\~oes.}
+    \label{tab:parametros}
+    \begin{tabular}{lccc}
+        \toprule
+        Grandeza & S\'imbolo & Valor & Unidade \\
+        \midrule
+        Massa & $m$ & $1{,}0$ & kg \\
+        Intensidade nominal & $k$ & $2{,}0$ & J\,m \\
+        Regulariza\c{c}\~ao & $\varepsilon$ & $0{,}25$ & m \\
+        Velocidade inicial & $v_0$ & $2{,}0$ & m/s \\
+        Fronteira de escape & $x_{\max}$ & $20{,}0$ & m \\
+        Passo temporal & $\Delta t$ & $0{,}01$ & s \\
+        Tempo m\'aximo & $T$ & $60{,}0$ & s \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Grandezas Registradas}
+
+Durante a integra\c{c}\~ao foram salvos os arrays de tempo, posi\c{c}\~ao, velocidade, energia mec\^anica e momento angular. A energia foi calculada por
+\begin{equation}
+    E(t)=\frac{1}{2}m|\vec v|^2 + V(r),
+\end{equation}
+e o momento angular perpendicular ao plano por
+\begin{equation}
+    L_z(t)=m(xv_y-yv_x).
+\end{equation}
+Tamb\'em foram extra\'idos a dist\^ancia m\'inima ao centro,
+\begin{equation}
+    r_{\min} = \min_t |\vec r(t)|,
+\end{equation}
+e o \^angulo final de espalhamento,
+\begin{equation}
+    \theta=\operatorname{atan2}(v_{y,f},v_{x,f}).
+\end{equation}
+Essas grandezas permitem comparar trajet\'orias, medir a depend\^encia com $b$, verificar conserva\c{c}\~ao de energia e momento angular, e avaliar o efeito dos par\^ametros $k$ e $\varepsilon$.

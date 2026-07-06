@@ -56,8 +56,8 @@ class Particle:
     def copy(self) -> Particle:
         return Particle(
             mass=self.mass,
-            position=self.position,
-            velocity=self.velocity,
+            position=self.position.copy(),
+            velocity=self.velocity.copy(),
             simulation_type=self.simulation_type,
         )
 
